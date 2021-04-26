@@ -7,8 +7,25 @@ python:
   - 3.6
   - 3.5
 
+install:
+  # We do this conditionally because it saves us some downloading if the
+  # version is the same.
+  - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - source "$HOME/miniconda/etc/profile.d/conda.sh"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  # Useful for debugging any issues with conda
+  - conda info -a
+
+  # Replace dep1 dep2 ... with your dependencies
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION fire pandas tabulate
+  - conda activate test-environment
+  - python -m pip install .
+
 # Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
-install: pip install -U tox-travis
+# install: pip install -U tox-travis
 
 # Command to run tests, e.g. python setup.py test
 script: tox
@@ -17,13 +34,13 @@ script: tox
 # create the Github repo and add it to Travis, run the
 # following command to finish PyPI deployment setup:
 # $ travis encrypt --add deploy.password
-deploy:
-  provider: pypi
-  distributions: sdist bdist_wheel
-  user: barry.moore
-  password:
-    secure: PLEASE_REPLACE_ME
-  on:
-    tags: true
-    repo: barrymoore/cercocarpus
-    python: 3.8
+# deploy:
+#   provider: pypi
+#   distributions: sdist bdist_wheel
+#   user: barry.moore
+#   password:
+#     secure: PLEASE_REPLACE_ME
+#   on:
+#     tags: true
+#     repo: barrymoore/cercocarpus
+#     python: 3.8
