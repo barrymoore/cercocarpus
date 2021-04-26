@@ -4,7 +4,8 @@
 
 import pytest
 
-from cercocarpus import cercocarpus
+# import cercocarpus
+
 
 @pytest.fixture
 def response():
@@ -15,8 +16,10 @@ def response():
     import requests
     return requests.get('https://github.com/barrymoore/cercocarpus')
 
+
 def test_content(response):
     """Sample pytest test function with the pytest fixture as an argument."""
     from bs4 import BeautifulSoup
-    assert 'GitHub' in BeautifulSoup(response.content, features="lxml").title.string
 
+    assert 'GitHub' in BeautifulSoup(response.content,
+                                     features="lxml").title.string
