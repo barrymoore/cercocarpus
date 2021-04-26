@@ -4,7 +4,10 @@ import sys
 
 class Cercocarpus():
 
-  def echo_me(self, file):
+  def __init__(self):
+    pass
+    
+  def echo(self, file='-'):
     
     fh = None
     if (file == '-'):
@@ -17,4 +20,4 @@ class Cercocarpus():
 
 if __name__ == '__main__':
   cerc = Cercocarpus()
-  fire.Fire({'echo': cerc.echo_me})
+  fire.Fire({'echo': cerc.echo})
