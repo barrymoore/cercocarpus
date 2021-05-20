@@ -20,7 +20,7 @@ cercocarpus
 
 
 
-Cercocarpus - A collection of libraries and tools written in Python for hacking data files.
+Cercocarpus - A set of tools written in Python for hacking text data.
 
 This project has just gotten started, so check back later when something useful has been added :)
 
