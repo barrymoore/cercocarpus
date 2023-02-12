@@ -20,8 +20,9 @@ cercocarpus
 
 
 
-Cercocarpus - A collection of python tools for wrangling text data.
+Cercocarpus - A set of tools written in Python for hacking text data.
 
+This project has just gotten started, so check back later when something useful has been added :)
 
 * Free software: MIT license
 * Documentation: https://cercocarpus.readthedocs.io.
