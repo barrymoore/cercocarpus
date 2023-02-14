@@ -192,11 +192,6 @@ def main():
         
         # Check for gene_ids in genG_ids
         gene_lcas = []
-        # Parallel(n_jobs=2)(delayed(sqrt)(i ** 2) for i in range(10))
-        # for gene_id in gen_leaves:
-        #     lca = get_lcas(prb_id, gene_id, pgG)
-        #     gene_lcas.append(lca)
-        # gene_lcas = Parallel(n_jobs=8)(delayed(get_lcas)(prb_id, gene_id, pgG) for gene_id in gen_leaves)
         lcas = Parallel(n_jobs=args.jobs)(delayed(get_lcas)(prb_id, genes, pgG, pgUG) for genes in gene_chunks)
         for lca in lcas:
             all_lcas.extend(lca)
@@ -206,6 +201,7 @@ def main():
     df_lcas = df_lcas.join(term_counts, how='left')
     df_lcas.sort_values(by='ic', ascending=False, inplace=True)
     df_lcas.drop_duplicates(subset='prb_id', keep='first', inplace=True)
+
     df_lcas = df_lcas.merge(df_p2g['term'], left_on='prb_id', right_index=True).drop_duplicates()
     df_lcas.rename(columns={'term': 'prb_term'}, inplace=True)
 
@@ -216,7 +212,7 @@ def main():
     df_lcas.rename(columns={'term': 'lca_term'}, inplace=True)
 
     df_lcas.sort_values(by='ic', ascending=False, inplace=True)
-    df_lcas.reset_index(inplace=True, drop=True)
+    df_lcas.reset_index(inplace=True, drop=False)
     df_lcas.rename(columns={'index': 'lca_id'}, inplace=True)
     df_lcas = df_lcas.loc[:,['ic', 'prb_term', 'gene_term', 'lca_term', 'prb_id', 'gene_id', 'lca_id', 'shpl', 'count', 'freq']]
     
