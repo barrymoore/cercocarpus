@@ -3,18 +3,11 @@
 import re
 import sys
 import json
-import math
 import argparse
 import numpy as np
 import pandas as pd
-import seaborn as sns
 import networkx as nx
-import matplotlib.pyplot as plt
-from matplotlib_venn import venn2
-from scipy.stats import hypergeom
-from networkx.drawing.nx_agraph import write_dot, graphviz_layout
 from tqdm import tqdm
-from pprint import pprint
 from joblib import Parallel, delayed
 
 description_text = (
@@ -38,39 +31,42 @@ def main():
     parser = argparse.ArgumentParser(
         description=description_text,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--gene', '-g',
+    parser.add_argument('--genes', '-g',
                         help='A comma-separated list of candidate genes.')
+    parser.add_argument('--gene_file', '-f',
+                        help='A file of candidate genes - one per row first column.')
     parser.add_argument('--proband_terms', '-t', dest='proband_terms_file',
                         help='A file containing the list of HPO IDs (first column) associated with the proband.')
     parser.add_argument('--phen2gene', '-p', dest='phen2gene_file',
                         help='The phenotype_to_genes.txt file from HPO')
     parser.add_argument('--json', '-j', dest='json_file',
                         help='The hp.json file from HPO')
-    parser.add_argument('--jobs', '-n', type=int, default=2,
+    parser.add_argument('--jobs', '-n', type=int, default=1,
                         help='The number of jobs to run in parallel')
-    # parser.add_argument('--argument', '-a',
-    #                     help='argument is...')
-    # parser.add_argument('--argument', '-a',
-    #                     help='argument is...')
     args = parser.parse_args()
 
     sys.stderr.write('INFO : loading_data_file : ' + args.proband_terms_file)
 
     # Parse Text Files to Datafames
-    gene_txt = args.gene
-    gene_list = gene_txt.split(',')
-    df_cnd = pd.DataFrame(gene_list, columns=['gene'])
+    df_cnd = object()
+    if args.genes is not None:
+        gene_list = args.genes.split(',')
+        df_cnd = pd.DataFrame(gene_list, columns=['gene'])
+    if args.gene_file is not None:
+        df_cnd = pd.read_table(args.gene_file, names=['gene'])
+
     df_prb = pd.read_table(args.proband_terms_file)
     df_prb.drop_duplicates(subset='id', inplace=True)
     df_prb.set_index('id', inplace=True)
     prb_ids = set(df_prb.index.to_list())
     
     # Parse HPO Phenotype_to_Gene File to Dataframe
+    # 'id' 'term' 'entrez-gene-id' 'entrez-gene-symbol' 'Additional Info from G-D source' 'G-D source' 'disease-ID for link'
     df_p2g = pd.read_table(args.phen2gene_file,
                            skiprows=1,
                            header=None,
                            index_col=False,
-                           names=['id', 'term', 'mim', 'gene', 'source', 'source_id'])
+                           names=['id', 'term', 'gene_id', 'gene', 'source_info', 'source_id', 'disease_id'])
     df_p2g.drop_duplicates(subset=['id', 'gene'], inplace=True)
     df_p2g = df_p2g.set_index('id')
         
