@@ -133,48 +133,16 @@ def main():
         prb_id_ancestors.update(nx.ancestors(pabG, id))
         prb_id_ancestors.add('HP:0000118')
         prbG = pabG.subgraph(prb_id_ancestors)
-        prb_leaves = [node for node in prbG.nodes() if prbG.out_degree(node)==0]
+        prb_leaves = {node for node in prbG.nodes() if prbG.out_degree(node)==0}
 
     #--------------------------------------------------------------------------------
 
     all_df_lcas = []
-    for gene in df_cnd['gene']:
-    
-        # Get subgraph/leaves of gene HPO ancestors
-        # gene = df_cnd.iloc[0]['gene']
-        gene_ids = set(df_p2g.query('gene == @gene').index.to_list())
-        gene_id_ancestors = set()
-        for id in gene_ids:
-            gene_id_ancestors.add(id)
-            if id not in pabG.nodes:
-                # WARN
-                continue
-            gene_id_ancestors.update(nx.ancestors(pabG, id))
-        gene_id_ancestors.add('HP:0000118')
-        genG = pabG.subgraph(gene_id_ancestors)
-        gen_leaves = [node for node in genG.nodes() if genG.out_degree(node)==0]
-    
-        # Get subgraph of proband & gene IDs
-        prb_gene_ids = prb_id_ancestors.union(gene_id_ancestors)
-        pgG = pabG.subgraph(prb_gene_ids)
-        pgG_ids = set(pgG.nodes)
-        pgUG = nx.Graph(pgG)
-        
-        all_gene_lcas = []
-        gene_chunks = np.array_split(gen_leaves, args.jobs * 2)
-        for prb_id in tqdm(prb_leaves, desc=gene):
-            if prb_id not in pgG_ids:
-                # WARN
-                continue
+    all_gene_lcas = []
             
-            # Check for gene_ids in genG_ids
-            lcas = Parallel(n_jobs=args.jobs)(delayed(get_lcas)(prb_id, genes, pgG, pgUG) for genes in gene_chunks)
-            for lca in lcas:
-                all_gene_lcas.extend(lca)
-    
-        df_lcas = pd.DataFrame(all_gene_lcas, columns=['anc_id', 'prb_id', 'gene_id', 'lca_id', 'shpl'])
-        df_lcas['gene'] = gene
-        all_df_lcas.append(df_lcas)
+    # Check for gene_ids in genG_ids
+    all_df_lcas = Parallel(n_jobs=args.jobs)(delayed(get_all_lcas)(prb_id_ancestors, prb_leaves, gene, df_p2g, pabG)
+                                             for gene in tqdm(df_cnd['gene'].to_list()))
 
     df_lcas = pd.concat(all_df_lcas)
     df_lcas.set_index('lca_id', inplace=True)
@@ -197,11 +165,10 @@ def main():
     df_lcas.sort_values(by='ic', ascending=False, inplace=True)
     df_lcas.reset_index(inplace=True, drop=False)
     df_lcas.rename(columns={'index': 'lca_id'}, inplace=True)
-    #all_lcas.extend(all_gene_lcas)
 
     # Fix ordering here
     #df_all_lcas = pd.DataFrame(all_lcas)
-    df_lcas = df_lcas.loc[:,['gene', 'ic', 'prb_term', 'gene_term', 'lca_term', 'anc_term', 'prb_id', 'gene_id', 'lca_id', 'anc_id', 'shpl', 'count', 'freq']]
+    df_lcas = df_lcas.loc[:,['gene', 'ic', 'shpl', 'prb_term', 'gene_term', 'lca_term', 'anc_term', 'prb_id', 'gene_id', 'lca_id', 'anc_id', 'count', 'freq']]
     print(df_lcas.to_csv(sep='\t', index=False))
 
 def get_lcas(prb_id, genes, pgG, pgUG):
@@ -218,6 +185,51 @@ def get_lcas(prb_id, genes, pgG, pgUG):
         shpl = nx.shortest_path_length(pgUG, gene_id, prb_id)
         lcas.append((anc, prb_id, gene_id, lca, shpl))
     return lcas
+
+def get_all_lcas(prb_id_ancestors, prb_id_leaves, gene, df_p2g, pabG):
+    # Get subgraph/leaves of gene HPO ancestors
+    # gene = df_cnd.iloc[0]['gene']
+    gene_ids = set(df_p2g.query('gene == @gene').index.to_list())
+    gene_id_ancestors = set()
+    for id in gene_ids:
+        gene_id_ancestors.add(id)
+        if id not in pabG.nodes:
+            # WARN
+            continue
+        gene_id_ancestors.update(nx.ancestors(pabG, id))
+    gene_id_ancestors.add('HP:0000118')
+    genG = pabG.subgraph(gene_id_ancestors)
+    gen_leaves = [node for node in genG.nodes() if genG.out_degree(node)==0]
+
+    # Get subgraph of proband & gene IDs
+    prb_gene_ids = prb_id_ancestors.union(gene_id_ancestors)
+    prb_gene_ids.add('HP:0000118')
+    pgG = pabG.subgraph(prb_gene_ids)
+    pgG_ids = set(pgG.nodes)
+    pgUG = nx.Graph(pgG)
+        
+    lcas = []
+    for prb_id in prb_id_leaves:
+        for gene_id in gen_leaves:
+            lca = nx.lowest_common_ancestor(pgG, gene_id, prb_id)
+            paths = nx.all_simple_paths(pgG, 'HP:0000118', prb_id)
+            anc = lca
+            for path in paths:
+                if (1 < len(path)):
+                    anc = path[1]
+                    break
+            shpl = nx.shortest_path_length(pgUG, gene_id, prb_id)
+            lcas.append((anc, prb_id, gene_id, lca, shpl))
+    
+    # all_gene_lcas = [];
+    # for lca in lcas:
+    #     all_gene_lcas.extend(lca)
+    
+    df_lcas = pd.DataFrame(lcas, columns=['anc_id', 'prb_id', 'gene_id', 'lca_id', 'shpl'])
+    df_lcas['gene'] = gene
+    return df_lcas
+
+
 
 if __name__ == "__main__":
     main()
